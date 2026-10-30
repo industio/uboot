@@ -211,15 +211,9 @@ char *envf_get(struct blk_desc *desc, const char *name)
 {
 	const char *list = NULL;
 	static env_t *env; /* static */
-	static enum if_type if_type;
-	static int devnum;
 
-	/* Only when first read env or storage is changed, need to read again. */
-	if (!env || if_type != desc->if_type || devnum != desc->devnum) {
+	if (!env)
 		env = envf_read(desc);
-		if_type = desc->if_type;
-		devnum = desc->devnum;
-	}
 	if (!env)
 		goto out;
 

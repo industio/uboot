@@ -918,9 +918,6 @@ static int display_enable(struct display_state *state)
 	if (state->enabled_at_spl == false)
 		rockchip_connector_enable(state);
 
-	if (crtc_funcs->post_enable)
-		crtc_funcs->post_enable(state);
-
 #ifdef CONFIG_DRM_ROCKCHIP_RK628
 	/*
 	 * trigger .probe helper of U_BOOT_DRIVER(rk628) in ./rk628/rk628.c
@@ -2213,11 +2210,12 @@ static int rockchip_display_probe(struct udevice *dev)
 						s->crtc_state.crtc->vps[vp_id].plane_mask = ret;
 						s->crtc_state.crtc->assign_plane |= true;
 						s->crtc_state.crtc->vps[vp_id].primary_plane_id =
-							ofnode_read_u32_default(vp_node, "rockchip,primary-plane", -1);
+							ofnode_read_u32_default(vp_node, "rockchip,primary-plane", U8_MAX);
 						printf("get vp%d plane mask:0x%x, primary id:%d, cursor_plane:%d, from dts\n",
 						       vp_id,
 						       s->crtc_state.crtc->vps[vp_id].plane_mask,
-						       (int8_t)s->crtc_state.crtc->vps[vp_id].primary_plane_id,
+						       s->crtc_state.crtc->vps[vp_id].primary_plane_id == U8_MAX ? -1 :
+						       s->crtc_state.crtc->vps[vp_id].primary_plane_id,
 						       cursor_plane);
 					}
 
@@ -2277,26 +2275,16 @@ void rockchip_display_fixup(void *blob)
 	const char *path;
 	const char *cacm_header;
 	u64 aligned_memory_size;
-	bool is_logo_init = 0;
 
 	if (fdt_node_offset_by_compatible(blob, 0, "rockchip,drm-logo") >= 0) {
 		list_for_each_entry(s, &rockchip_display_list, head) {
-			if (s->is_init) {
-				ret = load_bmp_logo(&s->logo, s->klogo_name);
-				if (ret < 0) {
-					s->is_klogo_valid = false;
-					printf("VP%d fail to load kernel logo\n",
-					       s->crtc_state.crtc_id);
-				} else {
-					s->is_klogo_valid = true;
-				}
+			ret = load_bmp_logo(&s->logo, s->klogo_name);
+			if (ret < 0) {
+				s->is_klogo_valid = false;
+				printf("VP%d fail to load kernel logo\n", s->crtc_state.crtc_id);
+			} else {
+				s->is_klogo_valid = true;
 			}
-			is_logo_init |= s->is_init;
-		}
-
-		if (!is_logo_init) {
-			printf("The display is not initialized, skip display fixup\n");
-			return;
 		}
 
 		if (!get_display_size())

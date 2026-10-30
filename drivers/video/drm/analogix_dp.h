@@ -125,8 +125,6 @@
 
 #define ANALOGIX_DP_SOC_GENERAL_CTL		0x800
 
-#define ANALOGIX_DP_LINK_POLICY			0x9D8
-
 /* ANALOGIX_DP_TX_SW_RESET */
 #define RESET_DP_TX				(0x1 << 0)
 
@@ -457,9 +455,6 @@
 #define VIDEO_MODE_SLAVE_MODE			(0x1 << 0)
 #define VIDEO_MODE_MASTER_MODE			(0x0 << 0)
 
-/* ANALOGIX_DP_LINK_POLICY */
-#define ALTERNATE_SR_ENABLE			(0x1 << 7)
-
 #define DP_TIMEOUT_LOOP_COUNT 100
 #define MAX_CR_LOOP 5
 #define MAX_EQ_LOOP 5
@@ -635,8 +630,6 @@ struct analogix_dp_plat_data {
 	enum analogix_dp_devtype dev_type;
 	enum analogix_dp_sub_devtype subdev_type;
 	bool ssc;
-	bool support_dp_mode;
-	u8 max_bpc;
 };
 
 struct analogix_dp_device {
@@ -661,14 +654,6 @@ struct analogix_dp_device {
 	bool video_bist_enable;
 	u32 lane_map[4];
 	struct drm_dp_aux aux;
-	const struct analogix_dp_output_format *output_fmt;
-	bool dp_mode;
-};
-
-struct analogix_dp_output_format {
-	u32 bus_format;
-	u32 color_format;
-	u8 bpc;
 };
 
 /* analogix_dp_reg.c */
@@ -741,7 +726,5 @@ void analogix_dp_set_video_format(struct analogix_dp_device *dp,
 				  const struct drm_display_mode *mode);
 void analogix_dp_video_bist_enable(struct analogix_dp_device *dp);
 ssize_t analogix_dp_aux_transfer(struct drm_dp_aux *aux, struct drm_dp_aux_msg *msg);
-void analogix_dp_enable_assr_mode(struct analogix_dp_device *dp, bool enable);
-bool analogix_dp_get_assr_mode(struct analogix_dp_device *dp);
 
 #endif /* __DRM_ANALOGIX_DP__ */

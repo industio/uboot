@@ -477,7 +477,6 @@ void ab_update_root_partition(void)
 	/* Judge the partition device type. */
 	switch (dev_desc->if_type) {
 	case IF_TYPE_MMC:
-	case IF_TYPE_SCSI: /* scsi 0: UFS */
 		if (strstr(part_type, "ENV"))
 			snprintf(root_part_dev, 64, "root=/dev/mmcblk0p%d", part_num);
 		else if (strstr(part_type, "EFI"))
@@ -501,8 +500,7 @@ void ab_update_root_partition(void)
 		}
 		break;
 	default:
-		ab_update_root_uuid();
-		printf("Unknown part type, set default 'root=' with UUID.\n");
+		printf("%s: Not found part type, failed to set root part device.\n", __func__);
 		return;
 	}
 

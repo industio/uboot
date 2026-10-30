@@ -11,7 +11,6 @@
 #include <dm/lists.h>
 #include <dm/of.h>
 #include <dm/of_access.h>
-#include <dm/uclass-internal.h>
 #include <generic-phy.h>
 #include <linux/bitfield.h>
 #include <linux/bitops.h>
@@ -1210,36 +1209,23 @@ static const struct phy_ops rockchip_u3phy_ops = {
 	.exit		= rockchip_u3phy_exit,
 };
 
-int rockchip_u3phy_uboot_init(fdt_addr_t phy_addr)
+int rockchip_u3phy_uboot_init(void)
 {
-	struct udevice *udev = NULL;
-	struct udevice *dev;
-	struct uclass *uc;
-	const struct driver *find_drv;
+	struct udevice *udev;
 	struct rockchip_udphy *udphy;
 	unsigned int val;
 	int ret;
 
-	ret = uclass_get(UCLASS_PHY, &uc);
-	if (ret)
-		return ret;
-
-	find_drv = DM_GET_DRIVER(rockchip_udphy);
-	list_for_each_entry(dev, &uc->dev_head, uclass_node) {
-		if (dev->driver == find_drv && dev_read_addr(dev) == phy_addr) {
-			ret = uclass_get_device_tail(dev, 0, &udev);
-			break;
-		}
-	}
-
-	if (!udev || ret) {
-		ret = ret ? ret : -ENODEV;
-		pr_err("%s: get usb3-phy node failed: %d\n", __func__, ret);
+	ret = uclass_get_device_by_driver(UCLASS_PHY,
+					  DM_GET_DRIVER(rockchip_udphy_u3_port),
+					  &udev);
+	if (ret) {
+		pr_err("%s: get u3-port failed: %d\n", __func__, ret);
 		return ret;
 	}
 
 	/* DP only or high-speed, disable U3 port */
-	udphy = dev_get_priv(udev);
+	udphy = dev_get_priv(udev->parent);
 	if (!(udphy->mode & UDPHY_MODE_USB) || udphy->hs) {
 		pr_err("%s: udphy mode not support usb3\n", __func__);
 		goto disable_u3;

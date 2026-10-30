@@ -17,7 +17,6 @@
 #include <drm_modes.h>
 #include <dm/ofnode.h>
 #include <drm/drm_dsc.h>
-#include <reset.h>
 #include <spl_display.h>
 #include <clk.h>
 #include <drm/drm_color_mgmt.h>
@@ -82,17 +81,12 @@ enum rockchip_mcu_cmd {
 #define ROCKCHIP_OUT_MODE_BT1120	0
 #define ROCKCHIP_OUT_MODE_P666		1
 #define ROCKCHIP_OUT_MODE_P565		2
-#define RK3588_EDP_OUTPUT_MODE_YUV422	3
 #define ROCKCHIP_OUT_MODE_BT656		5
 #define ROCKCHIP_OUT_MODE_S666		9
 #define ROCKCHIP_OUT_MODE_S888		8
 #define ROCKCHIP_OUT_MODE_YUV422	9
 #define ROCKCHIP_OUT_MODE_S565		10
 #define ROCKCHIP_OUT_MODE_S888_DUMMY	12
-#define RK3588_DP_OUT_MODE_YUV422	12
-#define RK3576_EDP_OUT_MODE_YUV422	12
-#define RK3588_DP_OUT_MODE_YUV420	13
-#define RK3576_HDMI_OUT_MODE_YUV422	13
 #define ROCKCHIP_OUT_MODE_YUV420	14
 /* for use special outface */
 #define ROCKCHIP_OUT_MODE_AAAA		15
@@ -174,7 +168,6 @@ struct crtc_state {
 	ofnode node;
 	struct device_node *ports_node; /* if (ports_node) it's vop2; */
 	struct device_node *port_node;
-	struct reset_ctl dclk_rst;
 	struct clk dclk;
 	int crtc_id;
 

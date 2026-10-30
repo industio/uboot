@@ -9,9 +9,9 @@
 #define __PHY_ROCKCHIP_USBDP_H_
 
 #if CONFIG_IS_ENABLED(PHY_ROCKCHIP_USBDP)
-int rockchip_u3phy_uboot_init(fdt_addr_t phy_addr);
+int rockchip_u3phy_uboot_init(void);
 #else
-static inline int rockchip_u3phy_uboot_init(fdt_addr_t phy_addr)
+static inline int rockchip_u3phy_uboot_init(void)
 {
 	return -ENOTSUPP;
 }

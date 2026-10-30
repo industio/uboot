@@ -17,9 +17,6 @@ SIG_BIN="data2sign.bin"
 SIG_UBOOT="${FIT_DIR}/uboot.data2sign"
 SIG_BOOT="${FIT_DIR}/boot.data2sign"
 SIG_RECOVERY="${FIT_DIR}/recovery.data2sign"
-SIG_CFG_DIR="${FIT_DIR}/fit_signcfg"
-SIG_CONFIG="${SIG_CFG_DIR}/sign.readonly_config"
-MINIALL_INI="${SIG_CFG_DIR}/MINIALL.ini"
 # offs
 OFFS_DATA="0x1200"
 # placeholder address
@@ -66,7 +63,6 @@ function help()
 	echo "    --ini-loader               <loader ini file>"
 	echo "    --ini-trust                <trust ini file>"
 	echo "    --no-check"
-	echo "    --no-sign"
 	echo "    --spl-new"
 	echo
 }
@@ -128,7 +124,7 @@ function check_rsa_keys()
 function validate_arg()
 {
 	case $1 in
-		--no-check|--no-sign|--spl-new|--burn-key-hash)
+		--no-check|--spl-new|--burn-key-hash)
 			shift=1
 			;;
 		--ini-trust|--ini-loader|--rollback-index-boot|--rollback-index-recovery|--rollback-index-uboot|--boot_img|--recovery_img|--version-uboot|--version-boot|--version-recovery|--chip)
@@ -146,10 +142,6 @@ function fit_process_args()
 	if [ $# -eq 0 ]; then
 		help
 		exit 0
-	fi
-
-	if grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
-		ARG_SIGN="y"
 	fi
 
 	while [ $# -gt 0 ]; do
@@ -176,11 +168,6 @@ function fit_process_args()
 				;;
 			--no-check)     # No hostcc fit signature check
 				ARG_NO_CHECK="y"
-				shift 1
-				;;
-			--no-sign)
-				ARG_NO_SIGN="y"
-				ARG_SIGN="n"
 				shift 1
 				;;
 			--ini-trust)    # Assign trust ini file
@@ -229,29 +216,25 @@ function fit_process_args()
 				ARG_BURN_KEY_HASH="y"
 				shift 1
 				;;
-			--spl-fwver)
-				ARG_FIT_FWVER="${ARG_FIT_FWVER} --spl-fwver $2"
-				shift 2
-				;;
-			--fwver)
-				ARG_FIT_FWVER="${ARG_FIT_FWVER} --fwver $2"
-				shift 2
-				;;
 			*)
 				help
 				exit 1
 				;;
 		esac
 	done
+
+	if grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
+		ARG_SIGN="y"
+	fi
 }
 
 function fit_raw_compile()
 {
 	# Verified-boot: should rebuild code but don't need to repack images.
 	if [ "${ARG_SIGN}" == "y" ]; then
-		./make.sh --raw-compile ${ARG_FIT_FWVER}
+		./make.sh --raw-compile
 	fi
-	rm ${FIT_DIR} -rf && mkdir -p ${FIT_DIR} && mkdir -p ${SIG_CFG_DIR}
+	rm ${FIT_DIR} -rf && mkdir -p ${FIT_DIR}
 }
 
 function fit_gen_uboot_itb()
@@ -408,7 +391,7 @@ function fit_gen_boot_itb()
 
 		check_rsa_algo ${ITS_BOOT}
 
-		if [ "${ARG_SIGN}" != "y" ]; then
+		if ! grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
 			echo "ERROR: CONFIG_FIT_SIGNATURE is disabled"
 			exit 1
 		fi
@@ -495,7 +478,7 @@ function fit_gen_recovery_itb()
 
 		check_rsa_algo ${ITS_RECOVERY}
 
-		if [ "${ARG_SIGN}" != "y" ]; then
+		if ! grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
 			echo "ERROR: CONFIG_FIT_SIGNATURE is disabled"
 			exit 1
 		fi
@@ -619,7 +602,7 @@ function fit_gen_recovery_img()
 
 function fit_gen_loader()
 {
-	if [ "${ARG_SIGN}" == "y" ]; then
+	if grep -Eq '^CONFIG_FIT_SIGNATURE=y' .config ; then
 		${RK_SIGN_TOOL} cc --chip ${ARG_CHIP: 2: 6}
 		${RK_SIGN_TOOL} lk --key ${RSA_PRI_KEY} --pubkey ${RSA_PUB_KEY}
 		if ls *loader*.bin >/dev/null 2>&1 ; then
@@ -712,7 +695,7 @@ function fit_msg_loader()
 		LOADER=`ls *idblock*.img`
 	fi
 
-	if [ "${ARG_SIGN}" == "y" ]; then
+	if grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
 		echo "Image(signed): ${LOADER} (with spl, ddr...) is ready"
 	else
 		echo "Image(no-signed): ${LOADER} (with spl, ddr...) is ready"
@@ -729,51 +712,9 @@ function fit_msg_u_boot_loader()
 		LOADER=`ls *idblock*.img`
 	fi
 
-	if [ "${ARG_SIGN}" == "y" ]; then
+	if grep -q '^CONFIG_FIT_SIGNATURE=y' .config ; then
 		echo "Image(signed): ${LOADER} (with u-boot, ddr...) is ready"
 	else
 		echo "Image(no-signed): ${LOADER} (with u-boot, ddr...) is ready"
-	fi
-}
-
-function fit_signcfg_export()
-{
-	if [ "${ARG_NO_SIGN}" == "y" ]; then
-		if ls *loader*.bin >/dev/null 2>&1 ; then
-			LOADER=`ls *loader*.bin`
-		elif ls *download*.bin >/dev/null 2>&1 ; then
-			LOADER=`ls *download*.bin`
-		else
-			echo "ERROR: No loader found"
-			exit 1
-		fi
-		cp ${ARG_INI_LOADER} ${MINIALL_INI}
-		cp .config ${SIG_CONFIG}
-
-		mkdir -p ${SIG_CFG_DIR}/test_images/
-		cp uboot.img ${SIG_CFG_DIR}/test_images/
-		cp ${LOADER} ${SIG_CFG_DIR}/test_images/
-		tar zcvf ${SIG_CFG_DIR}/test_images.tar.gz ${SIG_CFG_DIR}/test_images >/dev/null 2>&1
-		rm -rf ${SIG_CFG_DIR}/test_images/
-
-		FDT_ADDR_R=`strings env/built-in.o | grep 'fdt_addr_r=' | awk -F "=" '{ print $2 }'`
-		KERNEL_ADDR_R=`strings env/built-in.o | grep 'kernel_addr_r=' | awk -F "=" '{ print $2 }'`
-		RMADISK_ADDR_R=`strings env/built-in.o | grep 'ramdisk_addr_r=' | awk -F "=" '{ print $2 }'`
-		echo "fdt_addr_r=${FDT_ADDR_R}" >> ${SIG_CONFIG}
-		echo "kernel_addr_r=${KERNEL_ADDR_R}" >> ${SIG_CONFIG}
-		echo "ramdisk_addr_r=${RMADISK_ADDR_R}" >> ${SIG_CONFIG}
-
-		CSUM=`sha256sum u-boot-nodtb.bin  | awk '{ print $1 }'`
-		echo "uboot_sha256sum=${CSUM}" >> ${SIG_CONFIG}
-		CSUM=`sha256sum spl/u-boot-spl-nodtb.bin  | awk '{ print $1 }'`
-		echo "spl_sha256sum=${CSUM}" >> ${SIG_CONFIG}
-		SIZE=`ls -l  spl/u-boot-spl-nodtb.bin | awk '{ print $5 }'`
-		echo "spl_size=${SIZE}" >> ${SIG_CONFIG}
-
-		BUILD_MAIL=`git config --get user.email`
-		BUILD_HOST=`hostname`
-		BUILD_USER=${USER}
-		BUILD_DATE=`date`
-		echo "BUILD: ${BUILD_MAIL} # ${BUILD_USER}@${BUILD_HOST} # ${BUILD_DATE}" >> ${SIG_CONFIG}
 	fi
 }

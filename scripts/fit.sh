@@ -42,6 +42,4 @@ else
 	if [ ! -z "${ARG_INI_LOADER}" ]; then
 		fit_msg_loader
 	fi
-
-	fit_signcfg_export
 fi
