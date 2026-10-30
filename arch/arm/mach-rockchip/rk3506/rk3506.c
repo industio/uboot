@@ -166,6 +166,9 @@ int arch_cpu_init(void)
 	writel(0x01ff01d1, GRF_BASE + GRF_SOC_CON28);
 	writel(0x00000079, USBPHY_APB_BASE + USBPHY_DIFF_RECEIVER_0);
 	writel(0x00000079, USBPHY_APB_BASE + USBPHY_DIFF_RECEIVER_1);
+	
+	//sdcard gpio4_b3
+	writel(0x00800080, 0xff4d8840);
 
 	/*
 	 * Set mcu jtag clock un-gate.
@@ -187,6 +190,9 @@ int arch_cpu_init(void)
 
 int fit_standalone_release(char *id, uintptr_t entry_point)
 {
+	//mcu reboot
+	writel(0x00060000, 0xff90000c);
+
 	/* address map: map 0 to sram, enable TCM mode for sram
 	 * 0xfff84000 for sram
 	 * 0x03e00000 for ddr */

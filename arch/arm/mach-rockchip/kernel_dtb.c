@@ -13,6 +13,7 @@
 #include <dm/uclass-internal.h>
 #include <asm/arch/hotkey.h>
 #include <asm/arch/resource_img.h>
+#include <drm/rockchip_lcd_form_sd.h>
 
 DECLARE_GLOBAL_DATA_PTR;
 
@@ -302,6 +303,9 @@ int init_kernel_dtb(void)
 	ulong fdt_addr = 0;
 	int ret = -ENODEV;
 
+	int lcd_flag = 0;
+	struct display_fixup_data fix_data;
+
 	printf("DM: v%d\n", IS_ENABLED(CONFIG_USING_KERNEL_DTB_V2) ? 2 : 1);
 
 	/*
@@ -375,6 +379,12 @@ dtb_okay:
 	phandles_fixup_cru((void *)gd->fdt_blob);
 	phandles_fixup_gpio((void *)gd->fdt_blob, (void *)ufdt_blob);
 #endif
+
+    lcd_flag = get_lcdparam_info_from_custom_partition(&fix_data);
+    if(!lcd_flag){
+       printf("================> lcd_flag == 0, fdt_fixup_display_route\n");
+               fdt_fixup_display_route((void *)fdt_addr, &fix_data);
+    }
 
 	gd->flags |= GD_FLG_KDTB_READY;
 	gd->of_root_f = gd->of_root;
